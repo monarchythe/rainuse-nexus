@@ -29,7 +29,7 @@ const cache = new Map<string, AnalyzeResult>();
  */
 function mockAnalysis(lat: number, lon: number): RoofAnalysis {
   // Use coordinate digits to create varied but deterministic results
-  const seed = Math.abs(lat * 1000 + lon * 100) % 100;
+  const seed = Math.floor(Math.abs(lat * 1000 + lon * 100) % 100);
   const detected = seed > 35;
   const confidence = detected
     ? 0.55 + (seed % 45) / 100

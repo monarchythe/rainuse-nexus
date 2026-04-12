@@ -229,7 +229,12 @@ export async function fetchBuildingFootprints(
   for (let i = 0; i < entries.length; i += batchSize) {
     const batch = entries.slice(i, i + batchSize);
     const batchResults = await Promise.all(
-      batch.map(([, url]) => parseTile(url, bbox, minAreaSqft))
+      batch.map(([qk, url]) =>
+        parseTile(url, bbox, minAreaSqft).catch((err) => {
+          console.warn(`[footprints] Skipping tile ${qk}: ${err.message}`);
+          return [] as BuildingFootprint[];
+        })
+      )
     );
     for (const results of batchResults) {
       for (const b of results) {

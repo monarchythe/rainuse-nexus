@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ScoredCandidate } from "@/lib/types";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,41 @@ import {
   MapPin,
   CloudRain,
   Gauge,
+  ScanEye,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Building,
+  HardHat,
+  StickyNote,
 } from "lucide-react";
+
+interface RoofAnalysis {
+  coolingTowerDetected: boolean;
+  coolingTowerConfidence: number;
+  estimatedTowerCount: number;
+  roofCondition: "excellent" | "good" | "fair" | "poor";
+  roofMaterial: string;
+  notes: string;
+}
+
+interface AnalyzeRoofResponse {
+  buildingId: string;
+  lat: number;
+  lon: number;
+  analysis: RoofAnalysis;
+  source: "ai" | "mock";
+  imageUrl: string | null;
+  cached: boolean;
+  note?: string;
+  error?: string;
+}
+
+type AnalysisState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "success"; data: AnalyzeRoofResponse }
+  | { status: "error"; message: string };
 
 function formatNumber(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -40,7 +75,50 @@ function SourceBadge({ measured }: { measured: boolean }) {
 export function BuildingCard({ candidate }: { candidate: ScoredCandidate }) {
   const c = candidate;
   const v = c.viability;
-  const confPct = Math.round(c.confidence * 100);
+  const [analysis, setAnalysis] = useState<AnalysisState>({ status: "idle" });
+
+  // Use AI-updated confidence if available, otherwise use original
+  const effectiveConfidence =
+    analysis.status === "success"
+      ? analysis.data.analysis.coolingTowerConfidence
+      : c.confidence;
+  const confPct = Math.round(effectiveConfidence * 100);
+
+  async function handleAnalyzeRoof() {
+    const buildingId = `${c.centroid_lat}-${c.centroid_lon}`;
+    console.log("[analyze-roof] Requesting analysis for:", {
+      buildingId,
+      lat: c.centroid_lat,
+      lon: c.centroid_lon,
+    });
+
+    setAnalysis({ status: "loading" });
+
+    try {
+      const res = await fetch("/api/analyze-roof", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          buildingId,
+          lat: c.centroid_lat,
+          lon: c.centroid_lon,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || `API returned ${res.status}`);
+      }
+
+      const data: AnalyzeRoofResponse = await res.json();
+      console.log("[analyze-roof] Response:", data);
+      setAnalysis({ status: "success", data });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Analysis failed";
+      console.error("[analyze-roof] Error:", msg);
+      setAnalysis({ status: "error", message: msg });
+    }
+  }
 
   return (
     <Card className="group overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5">
@@ -142,6 +220,43 @@ export function BuildingCard({ candidate }: { candidate: ScoredCandidate }) {
             <div className="text-[10px] text-muted-foreground">/yr</div>
           </div>
         </div>
+
+        {/* Analyze Roof button */}
+        {analysis.status === "idle" && (
+          <button
+            onClick={handleAnalyzeRoof}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+          >
+            <ScanEye className="h-4 w-4" />
+            Analyze Roof
+          </button>
+        )}
+
+        {/* Loading state */}
+        {analysis.status === "loading" && (
+          <div className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-dashed py-3 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Analyzing rooftop...
+          </div>
+        )}
+
+        {/* Error state */}
+        {analysis.status === "error" && (
+          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+            <p className="text-xs text-destructive">{analysis.message}</p>
+            <button
+              onClick={handleAnalyzeRoof}
+              className="mt-2 text-xs font-medium text-primary hover:underline"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Analysis results */}
+        {analysis.status === "success" && (
+          <RoofAnalysisPanel data={analysis.data} />
+        )}
       </CardContent>
     </Card>
   );
@@ -194,5 +309,91 @@ function ScorePill({ label, value }: { label: string; value: number }) {
       {label}
       <span className="font-bold">{pct}</span>
     </span>
+  );
+}
+
+function RoofAnalysisPanel({ data }: { data: AnalyzeRoofResponse }) {
+  const a = data.analysis;
+  const conditionColor: Record<string, string> = {
+    excellent: "text-emerald-600",
+    good: "text-emerald-500",
+    fair: "text-amber-600",
+    poor: "text-red-500",
+  };
+
+  return (
+    <div className="mt-4 rounded-lg border bg-muted/30 p-3 space-y-3">
+      {/* Source badge */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-foreground">
+          Roof Analysis
+        </span>
+        {data.source === "ai" ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-0.5 text-[10px] font-semibold text-violet-700">
+            <ScanEye className="h-3 w-3" />
+            AI-analyzed rooftop
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-0.5 text-[10px] font-semibold text-orange-700">
+            Demo fallback mode
+          </span>
+        )}
+      </div>
+
+      {/* Cooling tower detection */}
+      <div className="flex items-center gap-2">
+        {a.coolingTowerDetected ? (
+          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+        ) : (
+          <XCircle className="h-4 w-4 text-muted-foreground" />
+        )}
+        <span className="text-sm font-medium text-foreground">
+          {a.coolingTowerDetected
+            ? `Cooling tower detected (${Math.round(a.coolingTowerConfidence * 100)}% confidence)`
+            : "No cooling tower detected"}
+        </span>
+      </div>
+
+      {a.coolingTowerDetected && a.estimatedTowerCount > 0 && (
+        <div className="text-xs text-muted-foreground pl-6">
+          Estimated {a.estimatedTowerCount} tower unit
+          {a.estimatedTowerCount !== 1 ? "s" : ""}
+        </div>
+      )}
+
+      {/* Roof details grid */}
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="flex items-center gap-1.5">
+          <HardHat className="h-3 w-3 text-muted-foreground" />
+          <span className="text-muted-foreground">Condition:</span>
+          <span
+            className={`font-semibold capitalize ${conditionColor[a.roofCondition] || "text-foreground"}`}
+          >
+            {a.roofCondition}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Building className="h-3 w-3 text-muted-foreground" />
+          <span className="text-muted-foreground">Material:</span>
+          <span className="font-medium text-foreground truncate">
+            {a.roofMaterial}
+          </span>
+        </div>
+      </div>
+
+      {/* Notes */}
+      {a.notes && (
+        <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+          <StickyNote className="h-3 w-3 mt-0.5 shrink-0" />
+          <p className="leading-relaxed">{a.notes}</p>
+        </div>
+      )}
+
+      {data.cached && (
+        <div className="text-[10px] text-muted-foreground/60 text-right">
+          cached result
+        </div>
+      )}
+    </div>
   );
 }
