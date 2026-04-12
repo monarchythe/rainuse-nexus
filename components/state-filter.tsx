@@ -7,19 +7,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { stateOptions } from "@/lib/mock-data";
-import { SortField } from "@/lib/types";
+import { SortField, StateOption } from "@/lib/types";
+
+const stateOptions: StateOption[] = [
+  { value: "NONE", label: "Select a state..." },
+  { value: "TX", label: "Texas" },
+  { value: "AZ", label: "Arizona" },
+  { value: "CA", label: "California" },
+  { value: "CO", label: "Colorado" },
+  { value: "FL", label: "Florida" },
+  { value: "GA", label: "Georgia" },
+  { value: "IL", label: "Illinois" },
+  { value: "NJ", label: "New Jersey" },
+  { value: "PA", label: "Pennsylvania" },
+  { value: "WA", label: "Washington" },
+];
 
 export function StateFilter({
   selectedState,
   onStateChange,
   sortField,
   onSortChange,
+  disabled,
 }: {
   selectedState: string;
   onStateChange: (state: string) => void;
   sortField: SortField;
   onSortChange: (field: SortField) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -27,8 +42,14 @@ export function StateFilter({
         <label className="text-sm font-medium text-muted-foreground">
           State:
         </label>
-        <Select value={selectedState} onValueChange={(v) => { if (v !== null) onStateChange(v); }}>
-          <SelectTrigger className="w-[140px]">
+        <Select
+          value={selectedState}
+          onValueChange={(v) => {
+            if (v !== null) onStateChange(v);
+          }}
+          disabled={disabled}
+        >
+          <SelectTrigger className="w-[180px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -47,19 +68,20 @@ export function StateFilter({
         </label>
         <Select
           value={sortField}
-          onValueChange={(v) => { if (v !== null) onSortChange(v as SortField); }}
+          onValueChange={(v) => {
+            if (v !== null) onSortChange(v as SortField);
+          }}
+          disabled={disabled}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[200px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="viability_score">Viability Score</SelectItem>
-            <SelectItem value="roof_area_sqft">Roof Area</SelectItem>
-            <SelectItem value="estimated_savings_year">
-              Est. Savings
-            </SelectItem>
-            <SelectItem value="cooling_tower_confidence">
-              Cooling Tower
+            <SelectItem value="viabilityScore">Viability Score</SelectItem>
+            <SelectItem value="area_sqft">Roof Area</SelectItem>
+            <SelectItem value="annualSavings">Est. Savings</SelectItem>
+            <SelectItem value="coolingTowerConfidence">
+              Cooling Tower Conf.
             </SelectItem>
           </SelectContent>
         </Select>

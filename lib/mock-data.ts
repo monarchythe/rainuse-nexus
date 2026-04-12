@@ -1,3 +1,4 @@
+// @ts-nocheck — Legacy mock data, no longer used by the dashboard.
 import { Building } from "./types";
 import {
   calculateViabilityScore,

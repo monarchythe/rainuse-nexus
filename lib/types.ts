@@ -1,23 +1,60 @@
-export interface Building {
-  id: string;
-  name: string;
-  address: string;
-  city: string;
+// --- Types matching the real /api/scan-state response ---
+
+export interface ViabilityBreakdown {
+  roofAreaScore: number;
+  rainfallHarvestScore: number;
+  coolingTowerScore: number;
+  waterCostScore: number;
+  resilienceScore: number;
+  esgScore: number;
+  regulatoryScore: number;
+}
+
+export interface ViabilityResult {
+  viabilityScore: number; // 0-100
+  annualHarvestGallons: number;
+  usableGallons: number;
+  annualSavings: number;
+  screeningEstimate: true;
+  disclaimer: string;
+  countyFips: string;
+  countyName: string;
+  rainfallInches: number;
+  breakdown: ViabilityBreakdown;
+  weights: {
+    roofArea: number;
+    rainfallHarvest: number;
+    coolingTower: number;
+    waterCost: number;
+    resilience: number;
+    esg: number;
+    regulatory: number;
+  };
+}
+
+export interface ScoredCandidate {
+  centroid_lat: number;
+  centroid_lon: number;
+  area_sqft: number;
+  area_sqm: number;
   state: string;
-  lat: number;
-  lng: number;
-  type: "commercial" | "industrial" | "data-center" | "warehouse";
-  roof_area_sqft: number;
-  cooling_tower_confidence: number; // 0-100
-  rainfall_inches: number;
-  water_cost_index: number; // 1-10 scale
-  esg_signal: "strong" | "moderate" | "weak" | "none";
-  viability_score: number; // 0-100, computed
-  estimated_gallons_year: number;
-  estimated_savings_year: number;
-  stormwater_fee: boolean;
-  tax_incentive: boolean;
-  leed_certified: boolean;
+  county: string;
+  confidence: number;
+  height_m: number;
+  viability: ViabilityResult;
+}
+
+export interface ScanStateResponse {
+  candidates: ScoredCandidate[];
+  scanStatus: {
+    tilesTotal: number;
+    tilesFetched: number;
+    buildingsScanned: number;
+    candidatesScored: number;
+    candidatesReturned: number;
+  };
+  state: string;
+  timestamp: string;
 }
 
 export type StateOption = {
@@ -26,7 +63,7 @@ export type StateOption = {
 };
 
 export type SortField =
-  | "viability_score"
-  | "roof_area_sqft"
-  | "estimated_savings_year"
-  | "cooling_tower_confidence";
+  | "viabilityScore"
+  | "area_sqft"
+  | "annualSavings"
+  | "coolingTowerConfidence";
