@@ -19,19 +19,30 @@ The system is designed to answer one core question:
 ```text
 rainuse-nexus/
 ├── app/
-│   ├── layout.tsx
-│   ├── page.tsx
-│   ├── globals.css
+│   ├── layout.tsx          # root layout, nav, fonts
+│   ├── page.tsx            # landing page
 │   ├── dashboard/
-│   │   └── page.tsx
-│   └── api/
-│       ├── footprints/
-│       ├── scan-state/
-│       └── analyze-roof/
+│   │   └── page.tsx        # main dashboard
+│   └── globals.css         # tailwind imports
 ├── components/
+│   ├── navbar.tsx          # top nav
+│   ├── hero.tsx            # landing hero section
+│   ├── building-card.tsx   # individual building card
+│   ├── building-list.tsx   # filterable grid of cards
+│   ├── score-badge.tsx     # viability score visual
+│   ├── state-filter.tsx    # state dropdown filter
+│   └── stats-overview.tsx  # summary stats bar
 ├── lib/
+│   ├── mock-data.ts        # 15-20 mock buildings
+│   ├── types.ts            # TypeScript interfaces
+│   └── scoring.ts          # viability score calculation
 ├── public/
-└── package.json
+│   └── grundfos-logo.svg   # placeholder logo
+├── tailwind.config.ts
+├── package.json
+├── tsconfig.json
+└── next.config.js
+
 ```
 
 ## What the app does
