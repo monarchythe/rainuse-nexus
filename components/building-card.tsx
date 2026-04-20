@@ -323,6 +323,16 @@ function RoofAnalysisPanel({ data }: { data: AnalyzeRoofResponse }) {
 
   return (
     <div className="mt-4 rounded-lg border bg-muted/30 p-3 space-y-3">
+      {/* Satellite image */}
+      {data.imageUrl && (
+        <div className="overflow-hidden rounded-md">
+          <img
+            src={data.imageUrl}
+            alt="Satellite rooftop view"
+            className="w-full h-40 object-cover"
+          />
+        </div>
+      )}
       {/* Source badge */}
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-foreground">

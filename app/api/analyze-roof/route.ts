@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6",
           max_tokens: 1024,
           system:
             "You are a satellite imagery analyst for water infrastructure. You analyze commercial rooftop images to detect cooling towers and assess roof conditions for rainwater harvesting systems.",
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
       lon,
       analysis,
       source: "ai",
-      imageUrl: imageUrl.replace(mapboxToken, "REDACTED"),
+      imageUrl,
     };
 
     cache.set(buildingId, result);
