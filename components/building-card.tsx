@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ScoredCandidate } from "@/lib/types";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -76,6 +76,18 @@ export function BuildingCard({ candidate }: { candidate: ScoredCandidate }) {
   const c = candidate;
   const v = c.viability;
   const [analysis, setAnalysis] = useState<AnalysisState>({ status: "idle" });
+  const [displayName, setDisplayName] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/geocode?lat=${c.centroid_lat}&lon=${c.centroid_lon}`)
+      .then((r) => r.json())
+      .then((data: { address: string | null }) => {
+        if (!cancelled && data.address) setDisplayName(data.address);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [c.centroid_lat, c.centroid_lon]);
 
   // Use AI-updated confidence if available, otherwise use original
   const effectiveConfidence =
@@ -138,9 +150,10 @@ export function BuildingCard({ candidate }: { candidate: ScoredCandidate }) {
 
           {/* Address / coordinates */}
           <h3 className="mt-2 text-base font-semibold leading-tight text-foreground">
-            {v.countyName && v.countyName !== "Unknown"
-              ? `${v.countyName} Building`
-              : `Building @ ${formatCoord(c.centroid_lat, c.centroid_lon)}`}
+            {displayName ??
+              (v.countyName && v.countyName !== "Unknown"
+                ? `${v.countyName} Building`
+                : `Building @ ${formatCoord(c.centroid_lat, c.centroid_lon)}`)}
           </h3>
           <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
             <MapPin className="h-3 w-3" />

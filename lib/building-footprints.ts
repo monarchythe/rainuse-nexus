@@ -221,10 +221,10 @@ export async function fetchBuildingFootprints(
     `[footprints] Matched ${urlMap.size} tiles in dataset index`
   );
 
-  // Fetch and parse tiles in parallel (batch of 5 at a time to avoid overwhelming)
+  // Fetch and parse tiles in parallel (batch of 10 at a time)
   const allBuildings: BuildingFootprint[] = [];
   const entries = Array.from(urlMap.entries());
-  const batchSize = 5;
+  const batchSize = 10;
 
   for (let i = 0; i < entries.length; i += batchSize) {
     const batch = entries.slice(i, i + batchSize);
@@ -261,6 +261,89 @@ export async function fetchBuildingFootprints(
       buildings_returned: topBuildings.length,
     },
   };
+}
+
+export interface FootprintStreamMeta {
+  kind: "meta";
+  tilesTotal: number;
+  tilesMatched: number;
+}
+
+export interface FootprintStreamBatch {
+  kind: "batch";
+  buildings: BuildingFootprint[];
+  tilesDone: number;
+  tilesMatched: number;
+}
+
+export type FootprintStreamEvent = FootprintStreamMeta | FootprintStreamBatch;
+
+/**
+ * Async generator variant of fetchBuildingFootprints.
+ * Yields a "meta" event once the tile index is resolved, then a "batch"
+ * event after every group of 10 tiles is fetched and parsed — so the
+ * caller can score and stream buildings while the remaining tiles are
+ * still being fetched.
+ */
+export async function* fetchBuildingFootprintsStream(
+  options: Omit<FetchFootprintsOptions, "maxResults">
+): AsyncGenerator<FootprintStreamEvent> {
+  const { state, minAreaSqft = MIN_AREA_SQFT } = options;
+
+  const stateInfo = STATE_BBOXES[state.toUpperCase()];
+  if (!stateInfo) {
+    throw new Error(
+      `Unsupported state: ${state}. Supported: ${Object.keys(STATE_BBOXES).join(", ")}`
+    );
+  }
+
+  const bbox = options.bbox ?? stateInfo;
+  const quadkeys = bboxToQuadkeys(
+    bbox.south,
+    bbox.west,
+    bbox.north,
+    bbox.east,
+    TILE_LEVEL
+  );
+
+  console.log(
+    `[footprints/stream] ${state}: ${quadkeys.length} quadkeys at level ${TILE_LEVEL}`
+  );
+
+  const urlMap = await fetchTileUrls(quadkeys);
+  console.log(`[footprints/stream] Matched ${urlMap.size} tiles in dataset index`);
+
+  yield { kind: "meta", tilesTotal: quadkeys.length, tilesMatched: urlMap.size };
+
+  const entries = Array.from(urlMap.entries());
+  const batchSize = 10;
+
+  for (let i = 0; i < entries.length; i += batchSize) {
+    const batch = entries.slice(i, i + batchSize);
+    const batchResults = await Promise.all(
+      batch.map(([qk, url]) =>
+        parseTile(url, bbox, minAreaSqft).catch((err) => {
+          console.warn(`[footprints/stream] Skipping tile ${qk}: ${err.message}`);
+          return [] as BuildingFootprint[];
+        })
+      )
+    );
+
+    const buildings: BuildingFootprint[] = [];
+    for (const results of batchResults) {
+      for (const b of results) {
+        b.state = state.toUpperCase();
+        buildings.push(b);
+      }
+    }
+
+    const tilesDone = Math.min(i + batchSize, entries.length);
+    console.log(
+      `[footprints/stream] ${tilesDone}/${entries.length} tiles done, ${buildings.length} buildings in batch`
+    );
+
+    yield { kind: "batch", buildings, tilesDone, tilesMatched: urlMap.size };
+  }
 }
 
 export { STATE_BBOXES };
